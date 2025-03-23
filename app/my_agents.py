@@ -1,5 +1,5 @@
 import asyncio
-from agents import Agent, Runner, function_tool, trace, ItemHelpers, RunContextWrapper
+from agents import Agent, Runner, function_tool, trace, ItemHelpers, RunContextWrapper, WebSearchTool, FileSearchTool
 
 from chinese_zodiac import get_chinese_zodiac
 from pydantic import BaseModel
@@ -39,6 +39,9 @@ def get_irony_definition():
     return "Irony is a literary device that involves a contrast between what is expected and what actually happens. It can be classified into several types, including situational irony, verbal irony, and dramatic irony."
 
 
+
+
+
 voice_agent = Agent(
     name="voice",
     handoff_description="A voice agent.",
@@ -47,6 +50,19 @@ voice_agent = Agent(
     ),    
     model="gpt-4o-mini",
     tools=[get_irony_definition],
+)
+
+search_agent = Agent(
+    name="Search",
+    handoff_description="A search agent.",
+    instructions=
+        "Search the internet for the user's answer.",
+    model="gpt-4o-mini",
+    tools=[WebSearchTool(),
+           FileSearchTool(
+            max_num_results=3,
+            vector_store_ids=["VECTOR_STORE_ID"],
+        )]
 )
 
 ocean_agent = Agent(
@@ -75,7 +91,18 @@ witty_agent = Agent(
     model="gpt-4o-mini",
 )
 
-
+manager_agent = Agent(
+    name="Manager",
+    handoff_description="A manager agent.",
+    instructions=
+        "You are a manager agent that can manage the conversation and delegate the tasks to the other agents.",
+    model="gpt-4o-mini",
+    tools=[
+        search_agent.as_tool(tool_name="search", tool_description="Search the internet for the user's answer."), 
+        ocean_agent.as_tool(tool_name="ocean", tool_description="Create a sentiment analysis of the user's message."), 
+        mbti_agent.as_tool(tool_name="mbti", tool_description="Create a MBTI analysis of the user's message."), 
+        witty_agent.as_tool(tool_name="witty", tool_description="You are a witty agent that can make light in the conversation given the context.")],
+    )
 
 async def main():
     msg = "so the Situational Irony Is that I am learning how irony works. can you tell me more about it?"
@@ -89,7 +116,8 @@ async def main():
     voice_result = await Runner.run(voice_agent, f"User message: {msg}\n Sentiments: \n Zodiac: {western_zodiac} {chinese_zodiac}\n Ocean: {ocean_result.final_output}\n MBTI: The user is an  {mbti} and asks: {mbti_result.final_output}")
     witty_result = await Runner.run(witty_agent, f"User message: {msg}\n Sentiments: \n Zodiac: {western_zodiac} {chinese_zodiac}\n Ocean: {ocean_result.final_output}\n MBTI: The user is an  {mbti} and asks: {mbti_result.final_output}")
 
-    print(f"Voice: {witty_result.final_output}")
+    manager_result = await Runner.run(manager_agent, f"User message: {msg}\n Sentiments: \n Zodiac: {western_zodiac} {chinese_zodiac}\n Ocean: {ocean_result.final_output}\n MBTI: The user is an  {mbti} and asks: {mbti_result.final_output}")
+    print(f"Voice: {manager_result.final_output}")
 
 if __name__ == "__main__":
     asyncio.run(main())
