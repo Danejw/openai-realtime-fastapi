@@ -1,28 +1,20 @@
 import asyncio
 from agents import Agent, Runner, function_tool, trace, ItemHelpers, RunContextWrapper, WebSearchTool, FileSearchTool
 
-from chinese_zodiac import get_chinese_zodiac
+from app.psychology.chinese_zodiac import get_chinese_zodiac
+from app.psychology.supabase_mbti import MBTIResponse
 from pydantic import BaseModel
 from agents.extensions.handoff_prompt import prompt_with_handoff_instructions
-from western_zodiac import get_western_zodiac
+from app.psychology.western_zodiac import get_western_zodiac
 
 
-class OceanOutput(BaseModel):
-    openness: float
-    conscientiousness: float
-    extraversion: float
-    agreeableness: float
-    neuroticism: float
+
     
-class MBTIOutput(BaseModel):
-    introversion: float
-    extroversion: float
-    sensing: float
-    intuition: float
-    thinking: float
-    feeling: float
-    judging: float
-    perceiving: float
+# class MBTIOutput(BaseModel):
+#     extraversion_introversion: float
+#     sensing_intuition: float
+#     thinking_feeling: float
+#     judging_perceiving: float
     
     
 birthMonth = 9
@@ -58,8 +50,16 @@ search_agent = Agent(
     instructions=
         "Search the internet for the user's answer.",
     model="gpt-4o-mini",
-    tools=[WebSearchTool(),
-           FileSearchTool(
+    tools=[WebSearchTool()]
+)
+
+filesearch_agent = Agent(
+    name="File Search",
+    handoff_description="A file search agent.",
+    instructions=
+        "Search the internal files for the user's answer.",
+    model="gpt-4o-mini",
+    tools=[FileSearchTool(
             max_num_results=3,
             vector_store_ids=["VECTOR_STORE_ID"],
         )]
@@ -80,7 +80,7 @@ mbti_agent = Agent(
     instructions=
         "Create a MBTI analysis of the user's message.",
     model="gpt-4o-mini",
-    output_type=MBTIOutput,
+    output_type=MBTIResponse,
 )
 
 witty_agent = Agent(
@@ -113,8 +113,8 @@ async def main():
     print(f"Ocean: {ocean_result.final_output}")
     print(f"MBTI: {mbti_result.final_output}")
     
-    voice_result = await Runner.run(voice_agent, f"User message: {msg}\n Sentiments: \n Zodiac: {western_zodiac} {chinese_zodiac}\n Ocean: {ocean_result.final_output}\n MBTI: The user is an  {mbti} and asks: {mbti_result.final_output}")
-    witty_result = await Runner.run(witty_agent, f"User message: {msg}\n Sentiments: \n Zodiac: {western_zodiac} {chinese_zodiac}\n Ocean: {ocean_result.final_output}\n MBTI: The user is an  {mbti} and asks: {mbti_result.final_output}")
+    #voice_result = await Runner.run(voice_agent, f"User message: {msg}\n Sentiments: \n Zodiac: {western_zodiac} {chinese_zodiac}\n Ocean: {ocean_result.final_output}\n MBTI: The user is an  {mbti} and asks: {mbti_result.final_output}")
+    #witty_result = await Runner.run(witty_agent, f"User message: {msg}\n Sentiments: \n Zodiac: {western_zodiac} {chinese_zodiac}\n Ocean: {ocean_result.final_output}\n MBTI: The user is an  {mbti} and asks: {mbti_result.final_output}")
 
     manager_result = await Runner.run(manager_agent, f"User message: {msg}\n Sentiments: \n Zodiac: {western_zodiac} {chinese_zodiac}\n Ocean: {ocean_result.final_output}\n MBTI: The user is an  {mbti} and asks: {mbti_result.final_output}")
     print(f"Voice: {manager_result.final_output}")

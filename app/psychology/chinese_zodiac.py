@@ -1,6 +1,9 @@
+from agents import function_tool
+
+
+#@function_tool
 def get_chinese_zodiac(year: int) -> str:
-    animals = ['Rat', 'Ox', 'Tiger', 'Rabbit', 'Dragon', 'Snake',
-               'Horse', 'Goat', 'Monkey', 'Rooster', 'Dog', 'Pig']
+    animals = ['Rat', 'Ox', 'Tiger', 'Rabbit', 'Dragon', 'Snake', 'Horse', 'Goat', 'Monkey', 'Rooster', 'Dog', 'Pig']
     return animals[(year - 1900) % 12]
 
 def main():

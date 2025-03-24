@@ -1,3 +1,8 @@
+from agents import function_tool
+
+
+
+#@function_tool
 def get_western_zodiac(month: int, day: int) -> str:
     zodiac = [
         ((1, 20), (2, 18), 'Aquarius'),
