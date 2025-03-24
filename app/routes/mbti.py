@@ -1,17 +1,17 @@
 from app.psychology.supabase_mbti import MBTI
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, Depends
 from app.psychology.mbti_analysis import MBTIAnalysisService
 from pydantic import BaseModel
+from app.auth import verify_token
+
 
 router = APIRouter()
 
 
 class MBTIRequest(BaseModel):
-    user_id: str
     message: str
     
 class MBTIUpdateRequest(BaseModel):
-    user_id: str
     extraversion_introversion: float
     sensing_intuition: float
     thinking_feeling: float
@@ -25,10 +25,10 @@ class MBTITypeRequest(BaseModel):
     
 
 @router.post("/mbti-analyze")
-async def mbti_analyze(data: MBTIRequest):
-    user_id = data.user_id
+async def mbti_analyze(data: MBTIRequest, user=Depends(verify_token)):
     message = data.message
-
+    user_id =  user_id = user["id"] 
+    
     # Create a new analysis service for this user
     service = MBTIAnalysisService(user_id)
     # Perform the analysis
@@ -36,7 +36,7 @@ async def mbti_analyze(data: MBTIRequest):
 
     # Get final MBTI type
     final_type = service.get_mbti_type()
-    style_prompt = service.generate_style_prompt("INTJ")
+    style_prompt = service.generate_style_prompt(final_type)
 
     return {
         "mbti_type": final_type,
@@ -44,8 +44,9 @@ async def mbti_analyze(data: MBTIRequest):
     }
 
 
-@router.get("/mbti/{user_id}")
-async def get_mbti(user_id: str):
+@router.get("/mbti")
+async def get_mbti(user=Depends(verify_token)):
+    user_id =  user_id = user["id"] 
     service = MBTIAnalysisService(user_id)
     mbti_data = service.repository.get_mbti(user_id)
 
@@ -56,12 +57,12 @@ async def get_mbti(user_id: str):
     
 
 @router.post("/mbti-update")
-async def update_mbti(data: MBTIUpdateRequest):
+async def update_mbti(data: MBTIUpdateRequest, user=Depends(verify_token)):
     """
     Updates the MBTI data for a given user in Supabase,
     applying the rolling average before saving.
     """
-    user_id = data.user_id
+    user_id =  user_id = user["id"] 
 
     # Initialize the MBTI Analysis Service
     service = MBTIAnalysisService(user_id)
@@ -87,8 +88,9 @@ async def update_mbti(data: MBTIUpdateRequest):
     }
     
 
-@router.get("/mbti-type/{user_id}")
-async def get_mbti_type(user_id: str):
+@router.get("/mbti-type")
+async def get_mbti_type(user=Depends(verify_token)):
+    user_id =  user_id = user["id"] 
     service = MBTIAnalysisService(user_id)
     mbti_type = service.get_mbti_type()
     return {"mbti_type": mbti_type}

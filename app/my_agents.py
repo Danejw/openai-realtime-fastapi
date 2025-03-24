@@ -2,6 +2,7 @@ import asyncio
 from agents import Agent, Runner, function_tool, trace, ItemHelpers, RunContextWrapper, WebSearchTool, FileSearchTool
 
 from app.psychology.chinese_zodiac import get_chinese_zodiac
+from app.psychology.ocean_analysis import OceanResponse
 from app.psychology.supabase_mbti import MBTIResponse
 from pydantic import BaseModel
 from agents.extensions.handoff_prompt import prompt_with_handoff_instructions
@@ -71,7 +72,7 @@ ocean_agent = Agent(
     instructions=
         "Create a sentiment analysis of the user's message.",
     model="gpt-4o-mini",
-    output_type=OceanOutput,
+    output_type=OceanResponse,
 )
 
 mbti_agent = Agent(
