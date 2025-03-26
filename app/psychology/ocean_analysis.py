@@ -1,8 +1,9 @@
 from pydantic import BaseModel
 from agents import Agent, Runner
 import logging
-from .supabase_ocean import Ocean, OceanRepository
+from app.supabase.supabase_ocean import Ocean, OceanRepository
 
+    
 logging.basicConfig(level=logging.INFO)
 
 class OceanResponse(BaseModel):
@@ -51,16 +52,21 @@ class OceanAnalysisService:
         self.repository.upsert_ocean(self.user_id, self.ocean)
 
     async def analyze_message(self, message: str):
-        ocean_result = await Runner.run(ocean_agent, message)
-        logging.info(f"OCEAN result: {ocean_result}")
-                
-        # Update rolling average
-        self._update_ocean_rolling_average(OceanResponse(**ocean_result.final_output.dict()))
-        
-        # Save the updated OCEAN data to Supabase
-        self.save_ocean()
-        
-        return ocean_result.final_output
+        try:
+            ocean_result = await Runner.run(ocean_agent, message)
+            logging.info(f"OCEAN result: {ocean_result}")
+                    
+            # Update rolling average
+            self._update_ocean_rolling_average(OceanResponse(**ocean_result.final_output.dict()))
+            
+            # Save the updated OCEAN data to Supabase
+            self.save_ocean()
+            
+            return ocean_result.final_output
+            
+        except Exception as e:
+            logging.error(f"Error in OCEAN analysis: {e}")
+            return None  # Return None to indicate analysis failed
 
     def _update_ocean_rolling_average(self, new_ocean: OceanResponse):
         old_count = self.ocean.response_count

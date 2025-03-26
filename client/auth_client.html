@@ -13,42 +13,66 @@
         body {
             font-family: Arial, sans-serif;
             background-color: #f4f4f4;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            flex-direction: column;
+            margin: 0;
+            padding: 40px;
+            min-height: 100vh;
+        }
+
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 30px;
+            max-width: 1200px;
+            margin: 0 auto;
         }
 
         .container {
-            width: 350px;
             background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s ease;
+        }
+
+        .container:hover {
+            transform: translateY(-5px);
+        }
+
+        /* Make certain containers span full width */
+        .container.full-width {
+            grid-column: 1 / -1;
         }
 
         h2 {
             text-align: center;
-            margin-bottom: 20px;
+            margin-bottom: 25px;
+            color: #2c3e50;
         }
 
         input {
             width: 100%;
-            padding: 10px;
+            padding: 12px;
             margin: 10px 0;
-            border: 1px solid #ddd;
-            border-radius: 5px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            transition: border-color 0.3s ease;
+        }
+
+        input:focus {
+            border-color: #007BFF;
+            outline: none;
         }
 
         button {
             width: 100%;
-            padding: 10px;
+            padding: 12px;
             background: #007BFF;
             color: white;
             border: none;
-            border-radius: 5px;
+            border-radius: 8px;
             cursor: pointer;
+            margin-top: 10px;
+            transition: background 0.3s ease;
         }
 
         button:hover {
@@ -57,35 +81,70 @@
 
         .message {
             text-align: center;
-            margin-top: 10px;
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 6px;
+            background: #f8f9fa;
         }
     </style>
 </head>
 
 <body>
+    <div class="grid-container">
+        <!-- Login container - full width -->
+        <div class="container full-width">
+            <h2>Login / Sign Up</h2>
+            <input type="email" id="email" placeholder="Email">
+            <input type="password" id="password" placeholder="Password">
+            <button onclick="signUp()">Sign Up</button>
+            <button onclick="login()">Login</button>
+            <p class="message" id="statusMessage"></p>
+        </div>
 
-    <div class="container">
-        <h2>Login / Sign Up</h2>
+        <!-- Configuration container -->
+        <div class="container">
+            <h2>Configuration</h2>
+            <button onclick="loadConfig()">Load Config & Init Supabase</button>
+            <p class="message" id="configStatus"></p>
+        </div>
 
-        <input type="email" id="email" placeholder="Email">
-        <input type="password" id="password" placeholder="Password">
+        <!-- MBTI Analysis container -->
+        <div class="container">
+            <h2>Test MBTI Analysis</h2>
+            <button onclick="testMBTIAnalysis()">Run MBTI Analysis</button>
+            <p class="message" id="mbtiResponse"></p>
+        </div>
 
-        <button onclick="signUp()">Sign Up</button>
-        <button onclick="login()">Login</button>
+        <!-- OCEAN Analysis container -->
+        <div class="container">
+            <h2>Test OCEAN Analysis</h2>
+            <button onclick="testOCEANAnalysis()">Run OCEAN Analysis</button>
+            <p class="message" id="oceanResponse"></p>
+        </div>
 
-        <p class="message" id="statusMessage"></p>
-    </div>
+        <!-- Orchestration container -->
+        <div class="container">
+            <h2>Orchestration</h2>
+            <input type="text" id="orchestrationMessage" placeholder="Enter your message">
+            <button onclick="runOrchestration()">Start Orchestration</button>
+            <p class="message" id="orchestrationResponse"></p>
+        </div>
 
-    <div class="container">
-        <h2>Test MBTI Analysis</h2>
-        <button onclick="testMBTIAnalysis()">Run MBTI Analysis</button>
-        <p class="message" id="mbtiResponse"></p>
-    </div>
+        <!-- Conversation Lead container -->
+        <div class="container">
+            <h2>Conversation Lead</h2>
+            <input type="text" id="convoMessage" placeholder="Enter your message">
+            <button onclick="startConversation()">Send Message</button>
+            <p class="message" id="convoResponse"></p>
+        </div>
 
-    <div class="container">
-        <h2>Test OCEAN Analysis</h2>
-        <button onclick="testOCEANAnalysis()">Run OCEAN Analysis</button>
-        <p class="message" id="oceanResponse"></p>
+        <!-- Knowledge Query container -->
+        <div class="container">
+            <h2>Knowledge Query</h2>
+            <input type="text" id="knowledgeQuery" placeholder="Enter your search query">
+            <button onclick="querySimilarKnowledge()">Search Similar Knowledge</button>
+            <p class="message" id="knowledgeResponse"></p>
+        </div>
     </div>
 
     <!-- ✅ Ensure this script runs after Supabase SDK is loaded -->
@@ -102,6 +161,7 @@
             }
 
             let config = await response.json();
+            console.log("✅ Supabase Config Received:", config);
 
             if (!config.SUPABASE_URL || !config.SUPABASE_KEY) {
                 throw new Error("❌ Missing Supabase credentials from backend.");
@@ -230,6 +290,107 @@
             }
         }
 
+        async function runOrchestration() {
+                let token = await getAuthToken();
+                if (!token) return;
+
+                let message = document.getElementById("orchestrationMessage").value;
+                if (!message) {
+                    document.getElementById("orchestrationResponse").innerText = "Please enter a message.";
+                    return;
+                }
+
+                try {
+                    let response = await fetch("http://localhost:8000/orchestration/orchestration", {
+                        method: "POST",
+                        headers: {
+                            "Authorization": "Bearer " + token,
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify({
+                            message: message
+                        })
+                    });
+
+                    let result = await response.json();
+                    console.log("🔹 Orchestration Response:", result);
+                    document.getElementById("orchestrationResponse").innerText = JSON.stringify(result, null, 2);
+
+                } catch (err) {
+                    console.error("❌ Error calling orchestration:", err);
+                    document.getElementById("orchestrationResponse").innerText = "Error accessing orchestration.";
+                }
+            }
+
+        async function startConversation() {
+            let token = await getAuthToken();
+            if (!token) return;
+
+            let message = document.getElementById("convoMessage").value;
+            if (!message) {
+                document.getElementById("convoResponse").innerText = "Please enter a message.";
+                return;
+            }
+
+            try {
+                let response = await fetch("http://localhost:8000/orchestration/convo-lead", {
+                    method: "POST",
+                    headers: {
+                        "Authorization": "Bearer " + token,
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        message: message
+                    })
+                });
+
+                let result = await response.json();
+                console.log("🔹 Conversation Response:", result);
+                document.getElementById("convoResponse").innerText = JSON.stringify(result, null, 2);
+                
+                // Clear the input field after sending
+                document.getElementById("convoMessage").value = "";
+
+            } catch (err) {
+                console.error("❌ Error in conversation:", err);
+                document.getElementById("convoResponse").innerText = "Error in conversation.";
+            }
+        }
+
+        async function querySimilarKnowledge() {
+            let token = await getAuthToken();
+            if (!token) return;
+
+            let query = document.getElementById("knowledgeQuery").value;
+            if (!query) {
+                document.getElementById("knowledgeResponse").innerText = "Please enter a search query.";
+                return;
+            }
+
+            try {
+                let response = await fetch("http://localhost:8000/knowledge/retrieve-knowledge", {
+                    method: "POST",
+                    headers: {
+                        "Authorization": "Bearer " + token,
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        message: query
+                    })
+                });
+
+                let result = await response.json();
+                console.log("🔹 Similar Knowledge Response:", result);
+                document.getElementById("knowledgeResponse").innerText = JSON.stringify(result, null, 2);
+                
+                // Clear the input field after sending
+                document.getElementById("knowledgeQuery").value = "";
+
+            } catch (err) {
+                console.error("❌ Error querying knowledge:", err);
+                document.getElementById("knowledgeResponse").innerText = "Error querying knowledge.";
+            }
+        }
 
 </script>
 

@@ -1,9 +1,8 @@
 from app.auth import verify_token
-from app.psychology.supabase_ocean import Ocean
+from app.supabase.supabase_ocean import Ocean
 from fastapi import APIRouter, Request, Depends
 from pydantic import BaseModel
 from app.psychology.ocean_analysis import OceanAnalysisService
-from fastapi.security import HTTPAuthorizationCredentials
 
 
 router = APIRouter()

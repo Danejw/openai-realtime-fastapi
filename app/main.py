@@ -1,12 +1,13 @@
 from fastapi import FastAPI, HTTPException, Request, Depends
 import os
+from dotenv import load_dotenv
 
 app = FastAPI()
 
+load_dotenv()
 
 # CORS
 from fastapi.middleware.cors import CORSMiddleware
-
 
 # 🔥 Define allowed origins based on the environment
 ENV = os.getenv("ENV", "development")  # Default to development
@@ -32,12 +33,16 @@ from app.routes.health_check import health_check_router
 from app.routes.realtime import realtime_router
 from app.routes.mbti import router as mbti_router
 from app.routes.ocean import router as ocean_router
-
+from app.routes.knowledge import router as knowledge_router
+from app.routes.orchestration import router as orchestration_router
 
 app.include_router(health_check_router)
 app.include_router(realtime_router)
 app.include_router(mbti_router, prefix="/mbti", tags=["MBTI"])
 app.include_router(ocean_router, prefix="/ocean", tags=["OCEAN"])
+app.include_router(knowledge_router, prefix="/knowledge", tags=["Knowledge"])
+app.include_router(orchestration_router, prefix="/orchestration", tags=["Orchestration"])
+
 
 
 # Force HTTPS connections in production
@@ -101,4 +106,4 @@ async def get_config():
         "SUPABASE_URL": os.getenv("SUPABASE_URL"),
         "SUPABASE_KEY": os.getenv("SUPABASE_KEY")
     }
-
+    

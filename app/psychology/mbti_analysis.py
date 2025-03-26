@@ -1,8 +1,6 @@
-import json
 import logging
-import asyncio
 from pydantic import BaseModel
-from .supabase_mbti import MBTI, MBTIRepository
+from app.supabase.supabase_mbti import MBTI, MBTIRepository
 from agents import Agent, Runner, function_tool
 
 
@@ -65,19 +63,22 @@ class MBTIAnalysisService:
         """
         Asynchronously calls your model/agent to analyze the user's message.
         """
-        mbti_result = await Runner.run(mbti_agent, message)
-        
-        print("MBTI Response", MBTIResponse(**mbti_result.final_output.dict()))
-        
-        # Update the rolling average
-        self._update_mbti_rolling_average(MBTIResponse(**mbti_result.final_output.dict()))
-        
-        # Save the updated MBTI data to Supabase
-        self.save_mbti()
-        
-        logging.info(f"MBTI result: {mbti_result}")
-                    
-        return mbti_result.final_output
+        try:
+            mbti_result = await Runner.run(mbti_agent, message)
+                        
+            # Update the rolling average
+            self._update_mbti_rolling_average(MBTIResponse(**mbti_result.final_output.dict()))
+            
+            # Save the updated MBTI data to Supabase
+            self.save_mbti()
+            
+            logging.info(f"MBTI result: {mbti_result}")
+                        
+            return mbti_result.final_output
+            
+        except Exception as e:
+            logging.error(f"Error in MBTI analysis: {e}")
+            return None  # Return None to indicate analysis failed
     
 
     def _update_mbti_rolling_average(self, new_mbti: MBTIResponse):

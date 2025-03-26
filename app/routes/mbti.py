@@ -1,4 +1,4 @@
-from app.psychology.supabase_mbti import MBTI
+from app.supabase.supabase_mbti import MBTI
 from fastapi import APIRouter, Request, Depends
 from app.psychology.mbti_analysis import MBTIAnalysisService
 from pydantic import BaseModel
