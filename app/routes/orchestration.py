@@ -185,6 +185,8 @@ async def convo_lead(user_input: UserInput, user=Depends(verify_token)):
         Ask your questions in a natural way as the conversation progresses. Ask questions that are relevant to gain accurate MBTI type and OCEAN analysis traits of the user.
         Ask questions that are relevant to the user's message.
         
+        Keep your language simple, natural, and conversational. Keep it at a 5th grade level.
+        
         DO NOT MENTION MBTI OR OCEAN analysis in your response.
         
         Personality OCEAN Traits of the {user_id} are: {ocean_traits}
@@ -199,7 +201,7 @@ async def convo_lead(user_input: UserInput, user=Depends(verify_token)):
     
     # Generate AI response using system prompt
     convo_lead_agent = Agent(
-        name="Lead Convo Agent",
+        name="Astra",
         handoff_description="A conversational agent that leads the conversation with the user to get to know them better.",
         instructions=instructions,
         model="gpt-4o-mini",
@@ -231,7 +233,7 @@ async def convo_lead(user_input: UserInput, user=Depends(verify_token)):
         # Append the agent's response back to the conversation history
         append_message_to_history(user_id, "Lead Convo Agent", response.final_output)
         
-        if len(history) >= 3:
+        if len(history) >= 10:
             await replace_conversation_history_with_summary(user_id)
                     
         return response.final_output
