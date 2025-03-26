@@ -1,16 +1,15 @@
 from http.client import HTTPException
-import json
 from app.personal_agents.knowledge_extraction import KnowledgeExtractionService
 from app.psychology.mbti_analysis import MBTIAnalysisService
 from app.psychology.ocean_analysis import OceanAnalysisService
-from app.supabase import profiles
+from app.supabase.conversation_history import append_message_to_history, get_or_create_conversation_history, replace_conversation_history_with_summary
 from app.supabase.profiles import ProfileRepository
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 import asyncio
 import logging
 from app.auth import verify_token
-from agents import Agent, Runner, WebSearchTool, FileSearchTool, function_tool, ToolCallItem
+from agents import Agent, Runner, WebSearchTool, FileSearchTool, function_tool
 
 
 router = APIRouter()
@@ -27,6 +26,21 @@ def get_user_name(user_id: str) -> str:
     return profile_repo.get_user_name(user_id)
 
 @function_tool
+def get_users_name(user_id: str) -> str:
+    """
+    Retrieves the name of the user from the profile repository.
+    
+    Parameters:
+    - user_id (str): The unique identifier of the user.
+    
+    Returns:
+    - str: the name of the user
+    """ 
+    return profile_repo.get_user_name(user_id)
+
+
+
+@function_tool
 def update_user_name(user_id: str, name: str) -> str:
     """
     Updates the user's name in the profile repository.
@@ -41,9 +55,9 @@ def update_user_name(user_id: str, name: str) -> str:
     return profile_repo.update_user_name(user_id, name)
 
 @function_tool
-async def find_personalized_info_about_user(user_id: str, query: str) -> str:
+async def retrieve_personalized_info_about_user(user_id: str, query: str) -> str:
     """
-    Look for personalized information about the user in the knowledge repository.
+    Retireve personalized information about the user for more personalized, deeper, and meaningful conversation.
     
     Parameters:
     - user_id (str): The unique identifier of the user.
@@ -82,12 +96,10 @@ async def orchestrate(user_input: UserInput, user=Depends(verify_token)):
         ocean_task = asyncio.create_task(ocean_service.analyze_message(message))
 
         knowledge_service = KnowledgeExtractionService(user_id)
-        knowledge_task = asyncio.create_task(knowledge_service.extract_knowledge(message))
 
         # Wait for all tasks to complete
         await mbti_task  # MBTI updates asynchronously
         await ocean_task  # OCEAN updates asynchronously
-        await knowledge_task
         
         # Retrieve stored MBTI & OCEAN
         mbti_type = mbti_service.get_mbti_type()
@@ -137,36 +149,35 @@ async def convo_lead(user_input: UserInput, user=Depends(verify_token)):
     """
     Leads the conversation with the user. Asking questions to get to know the user better.  
     """
-    user_id = user["id"]   
+    user_id = user["id"]
     
     # Get the users name
     user_name = get_user_name(user_id)
     
-    # Run analyses concurrently
-    mbti_service = MBTIAnalysisService(user_id)
-    #mbti_task = asyncio.create_task(mbti_service.analyze_message(message))
+    # Append the new user message to the conversation history
+    if user_name is None:
+        append_message_to_history(user_id, "user", user_input.message)
+    else:
+        append_message_to_history(user_id, user_name, user_input.message)
     
+    # Initialize the services
+    mbti_service = MBTIAnalysisService(user_id)    
     ocean_service = OceanAnalysisService(user_id)
-    #ocean_task = asyncio.create_task(ocean_service.analyze_message(message))
 
-    knowledge_service = KnowledgeExtractionService(user_id)
-    #knowledge_task = asyncio.create_task(knowledge_service.extract_knowledge(message))
-
-    # Wait for all tasks to complete
-    # await mbti_task  # MBTI updates asynchronously
-    # await ocean_task  # OCEAN updates asynchronously
-    # await knowledge_task
-    
     # Retrieve stored MBTI & OCEAN
     mbti_type = mbti_service.get_mbti_type()
     style_prompt = mbti_service.generate_style_prompt(mbti_type)
     ocean_traits = ocean_service.get_personality_traits()
     
+    
+    # Retrieve or create the conversation context for the user
+    history = get_or_create_conversation_history(user_id)
+    
     instructions = f"""
         You are a conversational agent. 
         
         The user_id is {user_id}.
-        You are having a conversation with (this is the user's name) {user_name}. Naturally use their name in your responses. 
+        You are having a conversation with (this is the user's name) {user_name}. 
         If their name is not available, ask for it first. 
         When the user's name is given, update it using the update_user_name tool.
                 
@@ -176,32 +187,53 @@ async def convo_lead(user_input: UserInput, user=Depends(verify_token)):
         
         DO NOT MENTION MBTI OR OCEAN analysis in your response.
         
-        Personality OCEAN Traits of the user are: {ocean_traits}
-        Personality MBTI Type of the user is: {mbti_type}
+        Personality OCEAN Traits of the {user_id} are: {ocean_traits}
+        Personality MBTI Type of the {user_id} is: {mbti_type}
         
         Your conversational style should be: {style_prompt}
+        
+        Conversation History: {history}
     """
     
     logging.info(f"Convo Lead Instructions: {instructions}")
     
     # Generate AI response using system prompt
     convo_lead_agent = Agent(
-        name="Lead",
+        name="Lead Convo Agent",
         handoff_description="A conversational agent that leads the conversation with the user to get to know them better.",
         instructions=instructions,
         model="gpt-4o-mini",
-        tools=[update_user_name, find_personalized_info_about_user]
+        tools=[get_users_name, update_user_name, retrieve_personalized_info_about_user]
     )
     
     try:
         response = await Runner.run(convo_lead_agent, user_input.message)
-        
+    
         logging.info(f"Convo Lead Response: {response}")
         logging.info(f"new items: {response.new_items}")
         
-        # stringify the new items
-        #new_items = json.dumps(response.new_items)
-    
+        # result = Runner.run_streamed(agent, "Calculate something!")
+        # async for event in result.stream_events():
+        #     if event.type == "run_item_stream_event":
+        #         if event.item.type == "tool_call_item":
+        #             print("-- Tool was called")
+        #         elif event.item.type == "tool_call_output_item":
+        #             print(f"-- Tool output: {event.item.output}")
+        #         elif event.item.type == "message_output_item":
+        #             print(f"-- Message: {event.item.text}")
+        #     elif event.type == "agent_updated_stream_event":
+        #         print(f"Agent switched to: {event.new_agent.name}")
+            
+        new_input = response.to_input_list()
+        
+        logging.info(f"New Input: {new_input}")
+            
+        # Append the agent's response back to the conversation history
+        append_message_to_history(user_id, "Lead Convo Agent", response.final_output)
+        
+        if len(history) >= 3:
+            await replace_conversation_history_with_summary(user_id)
+                    
         return response.final_output
             
     except Exception as e:
@@ -211,19 +243,7 @@ async def convo_lead(user_input: UserInput, user=Depends(verify_token)):
 
 
     
-    # tools_called = ""
-    # for item in response.new_items:
-    #     if isinstance(item, ToolCallItem):
-    #         tool_name = item.raw_item['name']
-    #         tools_called += f"Tool Used: {tool_name}\n"
-    
-    # Response
-    # new_reponse = f"""
-    # {tools_called}
-    # \n\n
-    # {response.final_output}
-    # """
-    
+
 
         
         

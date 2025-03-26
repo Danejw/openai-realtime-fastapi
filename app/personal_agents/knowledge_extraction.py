@@ -49,6 +49,8 @@ class KnowledgeExtractionService:
         try:
             knowledge_result = await Runner.run(self.extraction_agent, message)
             result = KnowledgeResult(**knowledge_result.final_output.dict())
+            
+            logging.info(f"Extracted knowledge: {result}")  
 
             if result.metadata.score.value_score < 0.3:
                 logging.info("Extracted knowledge is not valuable enough to store.")

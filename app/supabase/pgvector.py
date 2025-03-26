@@ -14,12 +14,12 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 client = OpenAI(api_key=OPENAI_API_KEY)
 
 
-async def generate_embedding(text):
+def generate_embedding(text):
     """
     Converts text into an embedding vector using OpenAI's latest embedding model.
     """
     try:
-        response =  await client.embeddings.create(
+        response = client.embeddings.create(
             model="text-embedding-ada-002",  # Use the latest embedding model
             input=text
         )
@@ -31,11 +31,11 @@ async def generate_embedding(text):
         return None
 
 
-async def store_user_knowledge(user_id: str, knowledge_text: str, metadata: dict):
+def store_user_knowledge(user_id: str, knowledge_text: str, metadata: dict):
     """
     Stores extracted knowledge in the vector database with safety checks.
     """
-    embedding = await generate_embedding(knowledge_text)
+    embedding = generate_embedding(knowledge_text)
     
     logging.info(f"Embedding generated: {embedding}")   
 
@@ -61,11 +61,11 @@ async def store_user_knowledge(user_id: str, knowledge_text: str, metadata: dict
             "mention_count": 1
         }).execute()
 
-async def find_similar_knowledge(user_id: str, query: str, top_k=5):
+def find_similar_knowledge(user_id: str, query: str, top_k=5):
     """
     Finds the most relevant knowledge for a user based on a query.
     """
-    query_embedding = await generate_embedding(query)
+    query_embedding = generate_embedding(query)
 
     # Ensure the user has stored knowledge before searching
     existing = supabase.table("user_knowledge").select("*").eq("user_id", user_id).execute()
