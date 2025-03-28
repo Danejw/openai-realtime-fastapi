@@ -1,5 +1,6 @@
 from http.client import HTTPException
 from app.personal_agents.knowledge_extraction import KnowledgeExtractionService
+from app.personal_agents.planner import PlannerService
 from app.personal_agents.slang_extraction import SlangExtractionService
 from app.psychology.mbti_analysis import MBTIAnalysisService
 from app.psychology.ocean_analysis import OceanAnalysisService
@@ -209,13 +210,23 @@ async def convo_lead(user_input: UserInput, user=Depends(verify_token)):
     
     logging.info(f"Convo Lead Instructions: {instructions}")
     
+    # Initialize the planner agent
+    planner_agent = PlannerService().agent
+    
     # Generate AI response using system prompt
     convo_lead_agent = Agent(
         name="Astra",
         handoff_description="A conversational agent that leads the conversation with the user to get to know them better.",
         instructions=instructions,
         model="gpt-4o-mini",
-        tools=[get_users_name, update_user_name, retrieve_personalized_info_about_user]
+        tools=[
+            get_users_name, update_user_name, 
+            retrieve_personalized_info_about_user,
+            planner_agent.as_tool(
+                tool_name="create_plan",
+                tool_description="A tool that creates a plan for the user to follow."
+            )
+        ]
     )
     
     try:
