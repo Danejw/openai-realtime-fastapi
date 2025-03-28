@@ -1,5 +1,6 @@
 from http.client import HTTPException
 from app.personal_agents.knowledge_extraction import KnowledgeExtractionService
+from app.personal_agents.slang_extraction import SlangExtractionService
 from app.psychology.mbti_analysis import MBTIAnalysisService
 from app.psychology.ocean_analysis import OceanAnalysisService
 from app.supabase.conversation_history import append_message_to_history, get_or_create_conversation_history, replace_conversation_history_with_summary
@@ -163,11 +164,13 @@ async def convo_lead(user_input: UserInput, user=Depends(verify_token)):
     # Initialize the services
     mbti_service = MBTIAnalysisService(user_id)    
     ocean_service = OceanAnalysisService(user_id)
+    slang_service = SlangExtractionService(user_id)
 
     # Retrieve stored MBTI & OCEAN
     mbti_type = mbti_service.get_mbti_type()
     style_prompt = mbti_service.generate_style_prompt(mbti_type)
     ocean_traits = ocean_service.get_personality_traits()
+    slang_result = slang_service.retrieve_similar_slang(user_input.message)
     
     
     # Retrieve or create the conversation context for the user
@@ -194,6 +197,8 @@ async def convo_lead(user_input: UserInput, user=Depends(verify_token)):
         
         Your conversational style should be: {style_prompt}
         
+        Use similar language as the user, here are some examples: {slang_result}
+
         Conversation History: {history}
     """
     

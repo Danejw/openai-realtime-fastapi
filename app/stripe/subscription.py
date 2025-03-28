@@ -211,3 +211,48 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None))
 async def get_stripe_config():
     return {"publishableKey": STRIPE_CONFIG["publishable_key"]}
 
+@router.post("/deduct-credits")
+async def deduct_credits_endpoint(
+    data: dict, 
+    user=Depends(verify_token)
+):
+    user_id = user["id"]
+    amount = data.get("amount")
+    
+    if not amount or not isinstance(amount, int):
+        raise HTTPException(
+            status_code=400, 
+            detail="Invalid amount provided"
+        )
+    
+    repo = ProfileRepository()
+    
+    # Get current balance first
+    current_credits = repo.get_user_credit(user_id)
+    if current_credits is None:
+        raise HTTPException(
+            status_code=404,
+            detail="User profile not found"
+        )
+    
+    if current_credits < amount:
+        raise HTTPException(
+            status_code=402,
+            detail=f"Insufficient credits. Current balance: {current_credits}"
+        )
+    
+    # Perform atomic deduction
+    if not repo.deduct_credits(user_id, amount):
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to process credit deduction"
+        )
+    
+    # Get updated balance
+    new_balance = repo.get_user_credit(user_id)
+    
+    return {
+        "user_id": user_id,
+        "amount_deducted": amount,
+        "new_balance": new_balance
+    }

@@ -161,6 +161,14 @@
             <button onclick="querySimilarSlang()">Search Similar Slang</button>
             <p class="message" id="slangQueryResponse"></p>
         </div>
+
+        <!-- Credit Deduction Test Container -->
+        <div class="container">
+            <h2>Test Credit Deduction</h2>
+            <input type="number" style="width: 95%;" id="deductAmount" placeholder="Enter credit amount to deduct">
+            <button onclick="testCreditDeduction()">Deduct Credits</button>
+            <p class="message" id="deductionResponse"></p>
+        </div>
     </div>
 
     <!-- ✅ Ensure this script runs after Supabase SDK is loaded -->
@@ -466,6 +474,41 @@
             }
         }
 
+        async function testCreditDeduction() {
+            let token = await getAuthToken();
+            if (!token) return;
+
+            let amount = document.getElementById("deductAmount").value;
+            if (!amount || isNaN(amount)) {
+                document.getElementById("deductionResponse").innerText = "Please enter a valid number";
+                return;
+            }
+
+            try {
+                let response = await fetch("http://localhost:8000/app/stripe/deduct-credits", {
+                    method: "POST",
+                    headers: {
+                        "Authorization": "Bearer " + token,
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        amount: parseInt(amount)
+                    })
+                });
+
+                let result = await response.json();
+                if (response.ok) {
+                    document.getElementById("deductionResponse").innerText = 
+                        `✅ Success! New balance: ${result.new_balance} credits`;
+                } else {
+                    document.getElementById("deductionResponse").innerText = 
+                        `❌ Error: ${result.detail}`;
+                }
+            } catch (err) {
+                console.error("❌ Error deducting credits:", err);
+                document.getElementById("deductionResponse").innerText = "Error processing deduction";
+            }
+        }
 
 </script>
 

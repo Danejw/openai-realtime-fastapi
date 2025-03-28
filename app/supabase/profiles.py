@@ -161,7 +161,23 @@ class ProfileRepository:
         except Exception as e:
             logging.error(f"Error updating credits for user_id: {user_id}: {e}")
             return False    
-                 
+            
+    def deduct_credits(self, user_id: str, amount: int) -> bool:
+        """Atomically deduct credits from user's balance"""
+        try:
+            current_credits = self.get_user_credit(user_id)
+            
+            if current_credits is None or current_credits < amount:
+                logging.error(f"Insufficient credits for user {user_id}")
+                return False
+            
+            new_credits = current_credits - amount
+ 
+            response = self.supabase.table(self.table_name).update({"credits": new_credits}).eq("id", user_id).execute()
+            return True
+        except Exception as e:
+            logging.error(f"Failed to deduct credits for user {user_id}: {e}")
+            return False
 
     def get_profile(self, user_id: str) -> Optional[Profile]:
         """
