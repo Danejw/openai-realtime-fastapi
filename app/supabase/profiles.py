@@ -180,4 +180,17 @@ class ProfileRepository:
         except Exception as e:
             logging.error(f"Error fetching profile data for user {user_id}: {e}")
             return None
+        
+    def increment_user_credit(self, user_id: str, additional_credits: int):
+        # This should increment the user's credits by the given amount.
+        # Implement according to your Supabase client usage.
+        try:
+            # Retrieve the current credits (example using a synchronous call)
+            current = self.get_user_credit(user_id) or 0
+            new_total = current + additional_credits
+            response = self.supabase.table("profiles").update({"credits": new_total}).eq("id", user_id).execute()
+            return new_total
+        except Exception as e:
+            logging.error(f"Failed to increment credits for user {user_id}: {e}")
+            raise
 

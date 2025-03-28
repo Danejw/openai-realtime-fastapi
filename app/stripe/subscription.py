@@ -15,6 +15,9 @@ from app.supabase.profiles import ProfileRepository
 class SubscriptionRequest(BaseModel):
     plan: str  # Expected values: "basic", "standard", "premium"
 
+class OneTimePurchaseRequest(BaseModel):
+    tier: str  # Expected values: "basic", "standard", "premium"
+
 router = APIRouter()
 
 stripe.api_version = '2025-02-24.acacia'
@@ -29,20 +32,85 @@ PLAN_CONFIG = {
     "basic": {
         "credits": 2000,
         "token_allowance": 2000000,
-        "price_id": STRIPE_CONFIG["prices"]["basic"]
+        "price_id": STRIPE_CONFIG["sub_prices"]["basic"]
     },
     "standard": {
         "credits": 6000,
         "token_allowance": 6000000,
-        "price_id": STRIPE_CONFIG["prices"]["standard"]
+        "price_id": STRIPE_CONFIG["sub_prices"]["standard"]
     },
     "premium": {
         "credits": 10000,
         "token_allowance": 10000000,
-        "price_id": STRIPE_CONFIG["prices"]["premium"]
+        "price_id": STRIPE_CONFIG["sub_prices"]["premium"]
     }
 }
 
+ONE_TIME_PURCHASE_CONFIG = {
+    "basic": {
+        "cost": 10,
+        "token_allowance": 2000000,
+        "credits": 2000,
+        "price_id": STRIPE_CONFIG["one_time_prices"]["basic"]  # Price ID for a one-time purchase for Basic tier
+    },
+    "standard": {
+        "cost": 30,
+        "token_allowance": 6000000,
+        "credits": 6000,
+        "price_id": STRIPE_CONFIG["one_time_prices"]["standard"]
+    },
+    "premium": {
+        "cost": 50,
+        "token_allowance": 10000000,
+        "credits": 10000,
+        "price_id": STRIPE_CONFIG["one_time_prices"]["premium"]
+    }
+}
+
+
+@router.post("/create-one-time-checkout-session")
+async def create_one_time_checkout_session(
+    purchase_request: OneTimePurchaseRequest,
+    user=Depends(verify_token)
+):
+    try:
+        tier = purchase_request.tier
+        # Retrieve the one-time price ID and credits from the config
+        config = ONE_TIME_PURCHASE_CONFIG.get(tier)
+        if not config:
+            raise HTTPException(status_code=400, detail="Invalid purchase tier")
+
+        price_id = config["price_id"]
+        credits = config["credits"]
+
+        # Create a one-time Checkout Session in payment mode
+        session = stripe.checkout.Session.create(
+            payment_method_types=['card'],
+            line_items=[{
+                'price': price_id,
+                'quantity': 1,
+            }],
+            mode='payment',  # one-time payment
+            success_url=os.getenv("STRIPE_SUCCESS_URL"),
+            cancel_url=os.getenv("STRIPE_CANCEL_URL"),
+            metadata={
+                "user_id": user["id"],
+                "tier": tier,
+                "credits": credits
+            }
+        )
+        return {"sessionId": session.id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+
+
+
+
+
+
+# Create a checkout session for a subscription
 @router.post("/create-checkout-session")
 async def create_checkout_session(
     subscription_request: SubscriptionRequest,  # Changed to use request body model
@@ -81,6 +149,7 @@ async def create_checkout_session(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# Handle webhook events from Stripe for subscription
 @router.post("/webhook")
 async def stripe_webhook(request: Request, stripe_signature: str = Header(None)):
     payload = await request.body()
@@ -102,13 +171,9 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None))
     event_type = event.get("type")
     event_data = event.get("data", {}).get("object", {})
     
-    
-
     logging.info("📢 Stripe Event: %s", event_type)
-    #logging.info("📦 Event Data: %s", event_data)
 
-
-    # ✅ Handle successful payment
+    # ✅ Handle subscription successful payment
     if event_type == "invoice.paid":
         lines = event_data.get("lines", {}).get("data", [])
         if lines and "metadata" in lines[0]:
@@ -135,8 +200,23 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None))
     elif event_type == "invoice.payment_failed":
         logging.warning("💳 Payment failed. Consider notifying the user.")
 
-    elif event_type == "checkout.session.completed":
-        logging.info("✅ Checkout session completed")
+    # Handle one-time payment events (using checkout.session.completed in payment mode)
+    elif event_type == "checkout.session.completed" and event_data.get("mode") == "payment":
+        metadata = event_data.get("metadata", {})
+        user_id = metadata.get("user_id")
+        tier = metadata.get("tier")
+        credits = metadata.get("credits")
+        if user_id and tier and credits:
+            try:
+                credits = int(credits)
+                repo = ProfileRepository()
+                # For one-time purchases, simply add credits (e.g., increment existing credits)
+                updated_credits = repo.increment_user_credit(user_id, credits)
+                logging.info("✅ Added %s credits to user %s via one-time purchase", credits, user_id)
+            except Exception as e:
+                logging.error("❌ Failed to update credits for one-time purchase: %s", e)
+        else:
+            logging.warning("⚠️ One-time purchase metadata missing.")
         
     return {"status": "success"}
 

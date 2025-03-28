@@ -104,6 +104,18 @@
         <p class="message" id="subscriptionResponse"></p>
     </div>
 
+    <!-- One-Time Credit Purchase Container -->
+    <div class="container">
+        <h2>Buy Credits One-Time</h2>
+        <select id="creditTier">
+            <option value="basic">Basic (2,000 credits for $10)</option>
+            <option value="standard">Standard (6,000 credits for $30)</option>
+            <option value="premium">Premium (10,000 credits for $50)</option>
+        </select>
+        <button onclick="purchaseOneTimeCredits()">Purchase Credits</button>
+        <p class="message" id="creditPurchaseResponse"></p>
+    </div>
+
     <script>
         let supabase;
         let stripeInstance;
@@ -205,6 +217,42 @@
             }
         }
 
+        // Function to purchase one-time credits using Stripe Checkout
+        async function purchaseOneTimeCredits() {
+            let token = await getAuthToken();
+            if (!token) return;
+            let tier = document.getElementById("creditTier").value;
+            try {
+                // Call the one-time purchase endpoint; note the endpoint is different from subscriptions
+                let response = await fetch("http://localhost:8000/app/stripe/create-one-time-checkout-session", {
+                    method: "POST",
+                    headers: {
+                        "Authorization": "Bearer " + token,
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ tier: tier })
+                });
+                let result = await response.json();
+                if (result.sessionId) {
+                    // Get Stripe public key from config
+                    const configResponse = await fetch("http://localhost:8000/app/config");
+                    const config = await configResponse.json();
+                    stripeInstance = Stripe(config.STRIPE_PUBLIC_KEY);
+                    let { error } = await stripeInstance.redirectToCheckout({ sessionId: result.sessionId });
+                    if (error) {
+                        console.error("Stripe Checkout error:", error);
+                        document.getElementById("creditPurchaseResponse").innerText = "Error during checkout: " + error.message;
+                    }
+                } else {
+                    document.getElementById("creditPurchaseResponse").innerText = "Error: No session returned.";
+                }
+            } catch (err) {
+                console.error("❌ Error calling one-time purchase endpoint:", err);
+                document.getElementById("creditPurchaseResponse").innerText = "Error accessing one-time purchase.";
+            }
+        }
+
+        
         window.addEventListener("load", async () => {
             await loadConfig();
         });
