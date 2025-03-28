@@ -1,20 +1,28 @@
 # subscription.py
+import json
 import stripe
 import os
 import logging
-from fastapi import FastAPI, HTTPException, Request, Depends, APIRouter
+from fastapi import FastAPI, HTTPException, Request, Depends, APIRouter, Header
 from pydantic import BaseModel
 from app.stripe.stripe_config import STRIPE_CONFIG, ENABLE_SUBSCRIPTIONS
 from app.auth import verify_token
 from app.supabase.profiles import ProfileRepository
 
-stripe.api_key = STRIPE_CONFIG["secret_key"]
+
 
 # Define your subscription request model
 class SubscriptionRequest(BaseModel):
     plan: str  # Expected values: "basic", "standard", "premium"
 
 router = APIRouter()
+
+stripe.api_version = '2025-02-24.acacia'
+
+secret_key = STRIPE_CONFIG["secret_key"]
+stripe.api_key = secret_key
+
+
 
 # Subscription plan configurations
 PLAN_CONFIG = {
@@ -57,6 +65,13 @@ async def create_checkout_session(
                 "user_id": user["id"],
                 "plan": plan,
                 "credits": PLAN_CONFIG[plan]["credits"]
+            },
+            subscription_data={
+                "metadata": {
+                    "user_id": user["id"],
+                    "plan": plan,
+                    "credits": PLAN_CONFIG[plan]["credits"]
+                    }
             }
         )
         return {"sessionId": session.id}
@@ -65,56 +80,68 @@ async def create_checkout_session(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @router.post("/webhook")
-async def stripe_webhook(request: Request):
+async def stripe_webhook(request: Request, stripe_signature: str = Header(None)):
     payload = await request.body()
-    sig_header = request.headers.get("stripe-signature")
-    event = None
+    webhook_secret = STRIPE_CONFIG["webhook_secret"]
 
     try:
         event = stripe.Webhook.construct_event(
-            payload, sig_header, STRIPE_CONFIG["webhook_secret"]
+            payload=payload,
+            sig_header=stripe_signature,
+            secret=webhook_secret
         )
     except ValueError as e:
+        logging.error("❌ Invalid payload: %s", e)
         raise HTTPException(status_code=400, detail="Invalid payload")
     except stripe.error.SignatureVerificationError as e:
+        logging.error("❌ Invalid signature: %s", e)
         raise HTTPException(status_code=400, detail="Invalid signature")
 
-    # Handle subscription events
-    if event['type'] == 'checkout.session.async_payment_failed':
-      session = event['data']['object']
-    elif event['type'] == 'checkout.session.async_payment_succeeded':
-      session = event['data']['object']
-    elif event['type'] == 'checkout.session.completed':
-      session = event['data']['object']
-    elif event['type'] == 'checkout.session.expired':
-      session = event['data']['object']
-    else:
-      print('Unhandled event type {}'.format(event['type']))
+    event_type = event.get("type")
+    event_data = event.get("data", {}).get("object", {})
+    
+    
 
+    logging.info("📢 Stripe Event: %s", event_type)
+    #logging.info("📦 Event Data: %s", event_data)
+
+
+    # ✅ Handle successful payment
+    if event_type == "invoice.paid":
+        lines = event_data.get("lines", {}).get("data", [])
+        if lines and "metadata" in lines[0]:
+            metadata = lines[0]["metadata"]
+            user_id = metadata.get("user_id")    
+            plan = metadata.get("plan")
+            credits = metadata.get("credits")
+
+        if not user_id or not plan or not credits:
+            logging.warning("⚠️ Missing metadata. Cannot update user subscription.")
+        else:
+            try:
+                credits = int(credits)
+                logging.info(f"🎯 Updating user {user_id}: Plan={plan}, Credits={credits}")
+
+                repo = ProfileRepository()
+                updated_sub = repo.update_user_subscription(user_id, plan)
+                updated_credits = repo.update_user_credit(user_id, credits)
+
+                logging.info("✅ Supabase update response:", "updated_sub:", updated_sub, "updated_credits:", updated_credits)
+            except Exception as e:
+                logging.error(f"❌ Failed to update Supabase: {e}")
+
+    elif event_type == "invoice.payment_failed":
+        logging.warning("💳 Payment failed. Consider notifying the user.")
+
+    elif event_type == "checkout.session.completed":
+        logging.info("✅ Checkout session completed")
+        
     return {"status": "success"}
 
-async def handle_successful_payment(session):
-    repo = ProfileRepository()
-    user_id = session["metadata"]["user_id"]
-    plan = session["metadata"]["plan"]
-    
-    repo.update_user_subscription(user_id, plan)
-    repo.update_user_credit(user_id, int(session["metadata"]["credits"]))
 
-async def handle_renewal(invoice):
-    repo = ProfileRepository()
-    subscription = stripe.Subscription.retrieve(invoice["subscription"])
-    user_id = subscription["metadata"]["user_id"]
-    plan = subscription["metadata"]["plan"]
-    
-    # Reset credits on successful renewal
-    repo.update_user_credit(user_id, PLAN_CONFIG[plan]["credits"])
+@router.get("/stripe/config")
+async def get_stripe_config():
+    return {"publishableKey": STRIPE_CONFIG["publishable_key"]}
 
-async def handle_payment_failure(invoice):
-    repo = ProfileRepository()
-    subscription = stripe.Subscription.retrieve(invoice["subscription"])
-    user_id = subscription["metadata"]["user_id"]
-    
-    # Optionally handle payment failure (e.g., send notification)
-    repo.update_user_subscription(user_id, "past_due")

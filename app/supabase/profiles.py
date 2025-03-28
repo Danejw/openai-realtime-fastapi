@@ -156,7 +156,7 @@ class ProfileRepository:
         Returns True if update was successful, False otherwise.
         """
         try:
-            response = self.supabase.table(self.table_name).update({"credit": credit}).eq("id", user_id).execute()
+            response = self.supabase.table(self.table_name).update({"credits": credit}).eq("id", user_id).execute()
             return True
         except Exception as e:
             logging.error(f"Error updating credit for user_id: {user_id}: {e}")

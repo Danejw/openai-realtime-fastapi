@@ -43,7 +43,7 @@ app.include_router(mbti_router, prefix="/mbti", tags=["MBTI"])
 app.include_router(ocean_router, prefix="/ocean", tags=["OCEAN"])
 app.include_router(knowledge_router, prefix="/knowledge", tags=["Knowledge"])
 app.include_router(orchestration_router, prefix="/orchestration", tags=["Orchestration"])
-app.include_router(stripe_router, prefix="/stripe", tags=["stripe"])
+app.include_router(stripe_router, prefix="/app/stripe", tags=["stripe"])
 
 
 

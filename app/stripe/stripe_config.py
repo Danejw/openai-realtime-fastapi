@@ -11,20 +11,23 @@ ENABLE_SUBSCRIPTIONS = os.getenv("ENABLE_SUBSCRIPTIONS", "true").lower() == "tru
 
 # Stripe configuration: Use test keys and prices in development mode
 if ENV == "development":
-    STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY_TEST", "sk_test_...")
-    STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET_TEST", "whsec_test_...")
-    STRIPE_PRICE_BASIC = os.getenv("STRIPE_PRICE_BASIC_TEST", "price_test_basic")
-    STRIPE_PRICE_STANDARD = os.getenv("STRIPE_PRICE_STANDARD_TEST", "price_test_standard")
-    STRIPE_PRICE_PREMIUM = os.getenv("STRIPE_PRICE_PREMIUM_TEST", "price_test_premium")
+    STRIPE_PUBLIC_KEY = os.getenv("STRIPE_PUBLIC_KEY_TEST")
+    STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY_TEST")
+    STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET_CLI") #os.getenv("STRIPE_WEBHOOK_SECRET_TEST")
+    STRIPE_PRICE_BASIC = os.getenv("STRIPE_PRICE_BASIC_TEST")
+    STRIPE_PRICE_STANDARD = os.getenv("STRIPE_PRICE_STANDARD_TEST")
+    STRIPE_PRICE_PREMIUM = os.getenv("STRIPE_PRICE_PREMIUM_TEST")
 else:
-    STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY_LIVE", "sk_live_...")
-    STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET_LIVE", "whsec_live_...")
-    STRIPE_PRICE_BASIC = os.getenv("STRIPE_PRICE_BASIC_LIVE", "price_live_basic")
-    STRIPE_PRICE_STANDARD = os.getenv("STRIPE_PRICE_STANDARD_LIVE", "price_live_standard")
-    STRIPE_PRICE_PREMIUM = os.getenv("STRIPE_PRICE_PREMIUM_LIVE", "price_live_premium")
+    STRIPE_PUBLIC_KEY = os.getenv("STRIPE_PUBLIC_KEY_LIVE")
+    STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY_LIVE")
+    STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET_LIVE")
+    STRIPE_PRICE_BASIC = os.getenv("STRIPE_PRICE_BASIC_LIVE")
+    STRIPE_PRICE_STANDARD = os.getenv("STRIPE_PRICE_STANDARD_LIVE")
+    STRIPE_PRICE_PREMIUM = os.getenv("STRIPE_PRICE_PREMIUM_LIVE")
 
 # Package these settings into a dictionary for easy access
 STRIPE_CONFIG = {
+    "publishable_key": STRIPE_PUBLIC_KEY,
     "secret_key": STRIPE_SECRET_KEY,
     "webhook_secret": STRIPE_WEBHOOK_SECRET,
     "prices": {
@@ -32,6 +35,6 @@ STRIPE_CONFIG = {
         "standard": STRIPE_PRICE_STANDARD,
         "premium": STRIPE_PRICE_PREMIUM,
     },
-    "webhook_url": os.getenv("STRIPE_WEBHOOK_URL", "http://localhost:8000/stripe/webhook")
+    "webhook_url": os.getenv("STRIPE_WEBHOOK_URL", "http://localhost:8000/app/stripe/webhook")
 }
 
