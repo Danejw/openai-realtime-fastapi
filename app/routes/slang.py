@@ -9,7 +9,7 @@ class SlangRequest(BaseModel):
     message: str
 
 @router.post("/extract-slang")
-def slang_extract(data: SlangRequest, user=Depends(verify_token)):
+async def slang_extract(data: SlangRequest, user=Depends(verify_token)):
     """
     Extracts slang from the given message and stores it if valuable.
     """
@@ -19,7 +19,7 @@ def slang_extract(data: SlangRequest, user=Depends(verify_token)):
     slang_service = SlangExtractionService(user_id)
     
     # Extract slang from the message
-    slang_result = slang_service.extract_slang(data.message)
+    slang_result = await slang_service.extract_slang(data.message)
     
     if not slang_result:
         return {"message": "No valuable slang extracted."}

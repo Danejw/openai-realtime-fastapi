@@ -54,7 +54,7 @@ class SlangExtractionService:
                 return None
             
             result.metadata.timestamp = self.get_timestamp()
-            await self.store_slang(result)
+            self.store_slang(result)
             
             return result
         except Exception as e:
@@ -67,7 +67,7 @@ class SlangExtractionService:
         """
         store_user_slang(self.user_id, slang.slang_text, slang.metadata.dict())
 
-    async def retrieve_similar_slang(self, query: str, top_k: int = 2):
+    def retrieve_similar_slang(self, query: str, top_k: int = 2):
         """
         Retrieve stored slang that is similar to the given query.
         """
