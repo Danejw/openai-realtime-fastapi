@@ -1,6 +1,6 @@
 import logging
 from typing import List, Optional
-from agents import Agent, Runner
+from agents import Agent, Runner, function_tool
 from pydantic import BaseModel, Field
 
 class TodoItem(BaseModel):
@@ -51,8 +51,10 @@ class PlannerService:
             instructions=instructions,
             model="gpt-4o-mini",
             output_type=PlannerOutput,
+            tools=[self.create_plan]
         )
 
+    @function_tool
     async def create_plan(self, task: str) -> PlannerResult:
         """
         Uses the planner agent to create a clear, actionable plan.

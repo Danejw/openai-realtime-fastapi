@@ -12,6 +12,7 @@ import asyncio
 import logging
 from app.auth import verify_token
 from agents import Agent, Runner, WebSearchTool, FileSearchTool, function_tool
+from app.utils.token_count import calculate_credits_to_deduct, calculate_provider_cost, count_tokens
 
 
 router = APIRouter()
@@ -215,7 +216,7 @@ async def convo_lead(user_input: UserInput, user=Depends(verify_token)):
     
     # Generate AI response using system prompt
     convo_lead_agent = Agent(
-        name="Astra",
+        name="Astra AI",
         handoff_description="A conversational agent that leads the conversation with the user to get to know them better.",
         instructions=instructions,
         model="gpt-4o-mini",
@@ -230,35 +231,37 @@ async def convo_lead(user_input: UserInput, user=Depends(verify_token)):
     )
     
     try:
+        # Count the tokens in the user's message
+        input_tokens = count_tokens(user_input.message)
+                
         response = await Runner.run(convo_lead_agent, user_input.message)
     
         logging.info(f"Convo Lead Response: {response}")
-        logging.info(f"new items: {response.new_items}")
-        
-        # result = Runner.run_streamed(agent, "Calculate something!")
-        # async for event in result.stream_events():
-        #     if event.type == "run_item_stream_event":
-        #         if event.item.type == "tool_call_item":
-        #             print("-- Tool was called")
-        #         elif event.item.type == "tool_call_output_item":
-        #             print(f"-- Tool output: {event.item.output}")
-        #         elif event.item.type == "message_output_item":
-        #             print(f"-- Message: {event.item.text}")
-        #     elif event.type == "agent_updated_stream_event":
-        #         print(f"Agent switched to: {event.new_agent.name}")
-            
-        new_input = response.to_input_list()
-        
-        logging.info(f"New Input: {new_input}")
             
         # Append the agent's response back to the conversation history
-        append_message_to_history(user_id, "Lead Convo Agent", response.final_output)
+        append_message_to_history(user_id, convo_lead_agent.name, response.final_output)
         
         if len(history) >= 10:
             await replace_conversation_history_with_summary(user_id)
             
+        # Count the tokens in the agent's response
+        output_tokens = count_tokens(response.final_output)
+
+        # Calculate the cost of the tokens
+        provider_cost = calculate_provider_cost(user_input.message, convo_lead_agent.model)
+        credits_cost = calculate_credits_to_deduct(provider_cost)
+        
+        costs = f"""
+        Input Tokens: {input_tokens}
+        Output Tokens: {output_tokens}
+        Total Tokens: {input_tokens + output_tokens}\n
+        Provider Cost: {provider_cost}
+        Credits Cost: {credits_cost}
+        """
+        logging.info(f"Costs: {costs}")
+        
         # Deduct the credits from the user's balance
-        profile_repo.deduct_credits(user_id, 1)
+        profile_repo.deduct_credits(user_id, credits_cost)
                     
         return response.final_output
             

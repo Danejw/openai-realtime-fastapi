@@ -110,7 +110,7 @@ async def replace_conversation_history_with_summary(user_id: str):
         
         # Run SLANG analysis
         slang_service = SlangExtractionService(user_id)
-        slang_task = asyncio.create_task(slang_service.analyze_message(history_string))
+        slang_task = asyncio.create_task(slang_service.extract_slang(history_string))
         await slang_task
     
         # Define instructions for the summarization agent.
