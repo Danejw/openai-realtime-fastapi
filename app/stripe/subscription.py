@@ -10,7 +10,6 @@ from app.auth import verify_token
 from app.supabase.profiles import ProfileRepository
 
 
-
 # Define your subscription request model
 class SubscriptionRequest(BaseModel):
     plan: str  # Expected values: "basic", "standard", "premium"
@@ -20,11 +19,11 @@ class OneTimePurchaseRequest(BaseModel):
 
 router = APIRouter()
 
-stripe.api_version = '2025-02-24.acacia'
 
+
+stripe.api_version = '2025-02-24.acacia'
 secret_key = STRIPE_CONFIG["secret_key"]
 stripe.api_key = secret_key
-
 
 
 # Subscription plan configurations
@@ -69,10 +68,7 @@ ONE_TIME_PURCHASE_CONFIG = {
 
 
 @router.post("/create-one-time-checkout-session")
-async def create_one_time_checkout_session(
-    purchase_request: OneTimePurchaseRequest,
-    user=Depends(verify_token)
-):
+async def create_one_time_checkout_session(purchase_request: OneTimePurchaseRequest,user=Depends(verify_token)):
     try:
         tier = purchase_request.tier
         # Retrieve the one-time price ID and credits from the config
@@ -103,19 +99,9 @@ async def create_one_time_checkout_session(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-
-
-
-
-
-
-
 # Create a checkout session for a subscription
 @router.post("/create-checkout-session")
-async def create_checkout_session(
-    subscription_request: SubscriptionRequest,  # Changed to use request body model
-    user=Depends(verify_token)
-):
+async def create_checkout_session(subscription_request: SubscriptionRequest, user=Depends(verify_token)):
     try:
         plan = subscription_request.plan
         price_id = PLAN_CONFIG[plan]["price_id"]
@@ -148,9 +134,8 @@ async def create_checkout_session(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-
 # Handle webhook events from Stripe for subscription
-@router.post("/webhook")
+@router.post("/webhook") # https://yourdomain.com/app/stripe/webhook) 
 async def stripe_webhook(request: Request, stripe_signature: str = Header(None)):
     payload = await request.body()
     webhook_secret = STRIPE_CONFIG["webhook_secret"]
@@ -197,8 +182,7 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None))
             except Exception as e:
                 logging.error(f"❌ Failed to update Supabase: {e}")
 
-    elif event_type == "invoice.payment_failed":
-        logging.warning("💳 Payment failed. Consider notifying the user.")
+
 
     # Handle one-time payment events (using checkout.session.completed in payment mode)
     elif event_type == "checkout.session.completed" and event_data.get("mode") == "payment":
@@ -212,14 +196,16 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None))
                 repo = ProfileRepository()
                 # For one-time purchases, simply add credits (e.g., increment existing credits)
                 updated_credits = repo.increment_user_credit(user_id, credits)
-                logging.info("✅ Added %s credits to user %s via one-time purchase", credits, user_id)
+                logging.info("✅ Added %s credits to user %s via one-time purchase = %s", credits, user_id, updated_credits)
             except Exception as e:
                 logging.error("❌ Failed to update credits for one-time purchase: %s", e)
         else:
             logging.warning("⚠️ One-time purchase metadata missing.")
+            
+    elif event_type == "invoice.payment_failed":
+        logging.warning("💳 Payment failed. Consider notifying the user.")
         
     return {"status": "success"}
-
 
 @router.get("/stripe/config")
 async def get_stripe_config():

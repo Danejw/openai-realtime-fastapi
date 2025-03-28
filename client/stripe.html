@@ -197,7 +197,7 @@
                 let result = await response.json();
                 if (result.sessionId) {
                     // Get Stripe public key from config
-                    const configResponse = await fetch("http://localhost:8000/app/config");
+                    const configResponse = await fetch("http://localhost:8000/config");
                     const config = await configResponse.json();
                     
                     stripeInstance = Stripe(config.STRIPE_PUBLIC_KEY);
@@ -235,7 +235,7 @@
                 let result = await response.json();
                 if (result.sessionId) {
                     // Get Stripe public key from config
-                    const configResponse = await fetch("http://localhost:8000/app/config");
+                    const configResponse = await fetch("http://localhost:8000/config");
                     const config = await configResponse.json();
                     stripeInstance = Stripe(config.STRIPE_PUBLIC_KEY);
                     let { error } = await stripeInstance.redirectToCheckout({ sessionId: result.sessionId });

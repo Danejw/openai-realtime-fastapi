@@ -139,27 +139,27 @@ class ProfileRepository:
         Returns the credit or None if no record is found.
         """
         try:
-            response = self.supabase.table(self.table_name).select("credit").eq("id", user_id).execute()
+            response = self.supabase.table(self.table_name).select("credits").eq("id", user_id).execute()
             data = response.data    
             if data and len(data) > 0:
-                return data[0]["credit"]
+                return data[0]["credits"]
             else:
                 logging.info(f"No profile record found for user_id: {user_id}")
                 return None
         except Exception as e:
-            logging.error(f"Error fetching credit for user_id: {user_id}: {e}")
+            logging.error(f"Error fetching credits for user_id: {user_id}: {e}")
             return None
         
     def update_user_credit(self, user_id: str, credit: int) -> bool:
         """
-        Updates the credit of the user in the profile record in Supabase.
+        Updates the credits of the user in the profile record in Supabase.
         Returns True if update was successful, False otherwise.
         """
         try:
             response = self.supabase.table(self.table_name).update({"credits": credit}).eq("id", user_id).execute()
             return True
         except Exception as e:
-            logging.error(f"Error updating credit for user_id: {user_id}: {e}")
+            logging.error(f"Error updating credits for user_id: {user_id}: {e}")
             return False    
                  
 
@@ -186,10 +186,10 @@ class ProfileRepository:
         # Implement according to your Supabase client usage.
         try:
             # Retrieve the current credits (example using a synchronous call)
-            current = self.get_user_credit(user_id) or 0
+            current = self.get_user_credit(user_id)
             new_total = current + additional_credits
             response = self.supabase.table("profiles").update({"credits": new_total}).eq("id", user_id).execute()
-            return new_total
+            return self.get_user_credit(user_id)
         except Exception as e:
             logging.error(f"Failed to increment credits for user {user_id}: {e}")
             raise
