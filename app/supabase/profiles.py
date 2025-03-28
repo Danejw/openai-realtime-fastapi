@@ -28,7 +28,6 @@ class ProfileRepository:
         self.supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
         self.table_name = "profiles"
 
-        
     def get_user_email(self, user_id: str) -> Optional[str]:
         """
         Retrieves the email from the profile record in Supabase.

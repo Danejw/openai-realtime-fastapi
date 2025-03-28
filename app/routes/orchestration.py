@@ -152,6 +152,11 @@ async def convo_lead(user_input: UserInput, user=Depends(verify_token)):
     """
     user_id = user["id"]
     
+    # TODO: Add a check to see if the user has enough credits by calculating the token used in the message
+    credits = profile_repo.get_user_credit(user_id)
+    if credits is None or credits < 1:
+        raise HTTPException(status_code=402, detail="Insufficient credits")
+    
     # Get the users name
     user_name = get_user_name(user_id)
     
@@ -240,6 +245,9 @@ async def convo_lead(user_input: UserInput, user=Depends(verify_token)):
         
         if len(history) >= 10:
             await replace_conversation_history_with_summary(user_id)
+            
+        # Deduct the credits from the user's balance
+        profile_repo.deduct_credits(user_id, 1)
                     
         return response.final_output
             
