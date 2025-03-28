@@ -1,9 +1,11 @@
 import json
 import os
-from supabase import create_client, AsyncClient
+from supabase import create_client
 from dotenv import load_dotenv
 from openai import OpenAI
 import logging
+
+
 load_dotenv()
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
@@ -13,7 +15,7 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 client = OpenAI(api_key=OPENAI_API_KEY)
 
-
+# Embedding generation
 def generate_embedding(text):
     """
     Converts text into an embedding vector using OpenAI's latest embedding model.
@@ -31,6 +33,7 @@ def generate_embedding(text):
         return None
 
 
+# User knowledge
 def store_user_knowledge(user_id: str, knowledge_text: str, metadata: dict):
     """
     Stores extracted knowledge in the vector database with safety checks.
@@ -81,4 +84,51 @@ def find_similar_knowledge(user_id: str, query: str, top_k=5):
 
     return response.data if response.data else {"message": "No similar knowledge found."}
 
+# User slang
+def store_user_slang(user_id: str, slang_text: str, metadata: dict):
+    """
+    Stores extracted slang in the vector store in a dedicated table (e.g. "user_slang").
+    """
+    embedding = generate_embedding(slang_text)
+    logging.info(f"Embedding generated for slang: {embedding}")
+    
+    # Check if this slang entry already exists to avoid duplicates
+    existing = supabase.table("user_slang").select("*")\
+        .eq("user_id", user_id)\
+        .eq("slang_text", slang_text).execute()
+    
+    if existing.data:
+        new_count = existing.data[0]["mention_count"] + 1
+        supabase.table("user_slang").update({
+            "metadata": json.dumps(metadata),
+            "last_updated": "now()",
+            "mention_count": new_count
+        }).eq("id", existing.data[0]["id"]).execute()
+        print("Updated existing slang entry.")
+    else:
+        supabase.table("user_slang").insert({
+            "user_id": user_id,
+            "slang_text": slang_text,
+            "embedding": embedding,
+            "metadata": json.dumps(metadata),
+            "mention_count": 1
+        }).execute()
 
+def find_similar_slang(user_id: str, query: str, top_k=5):
+    """
+    Finds the most similar slang entries for a user based on a query.
+    """
+    query_embedding = generate_embedding(query)
+    
+    # Ensure the user has stored slang before searching
+    existing = supabase.table("user_slang").select("*").eq("user_id", user_id).execute()
+    if not existing.data:
+        return {"message": "No slang stored for this user."}
+    
+    response = supabase.rpc("find_similar_slang", {
+        "user_id": user_id,
+        "embedding": query_embedding,
+        "top_k": top_k
+    }).execute()
+    
+    return response.data if response.data else {"message": "No similar slang found."}

@@ -9,8 +9,8 @@ router = APIRouter()
 class KnowledgeRequest(BaseModel):
     message: str
 
-@router.post("/extract")
-async def knowledge_extract(data: KnowledgeRequest, user=Depends(verify_token)):
+@router.post("/extract-knowledge")
+def knowledge_extract(data: KnowledgeRequest, user=Depends(verify_token)):
     """
     Extracts knowledge from the given message and stores it if valuable.
     """
@@ -21,7 +21,7 @@ async def knowledge_extract(data: KnowledgeRequest, user=Depends(verify_token)):
     knowledge_service = KnowledgeExtractionService(user_id)
     
     # Extract knowledge from the message
-    knowledge_result = await knowledge_service.extract_knowledge(message)
+    knowledge_result = knowledge_service.extract_knowledge(message)
     
     if not knowledge_result:
         return {"message": "No valuable knowledge extracted."}
@@ -29,7 +29,7 @@ async def knowledge_extract(data: KnowledgeRequest, user=Depends(verify_token)):
     return knowledge_result
 
 @router.post("/retrieve-knowledge")
-async def retrieve_knowledge(query: KnowledgeRequest, user=Depends(verify_token)):
+def retrieve_knowledge(query: KnowledgeRequest, user=Depends(verify_token)):
     """
     Retrieves stored knowledge relevant to the user's message.
     """
@@ -39,6 +39,6 @@ async def retrieve_knowledge(query: KnowledgeRequest, user=Depends(verify_token)
     knowledge_service = KnowledgeExtractionService(user_id)
 
     # Find similar stored knowledge
-    similar_knowledge = await knowledge_service.retrieve_similar_knowledge(query.message, top_k=5)
+    similar_knowledge = knowledge_service.retrieve_similar_knowledge(query.message, top_k=5)
 
-    return {"similar_knowledge": similar_knowledge}
+    return {"similar_knowledge": similar_knowledge }

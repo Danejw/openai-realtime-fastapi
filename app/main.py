@@ -36,6 +36,7 @@ from app.routes.ocean import router as ocean_router
 from app.routes.knowledge import router as knowledge_router
 from app.routes.orchestration import router as orchestration_router
 from app.stripe.subscription import router as stripe_router
+from app.routes.slang import router as slang_router
 
 app.include_router(health_check_router)
 app.include_router(realtime_router)
@@ -44,6 +45,7 @@ app.include_router(ocean_router, prefix="/ocean", tags=["OCEAN"])
 app.include_router(knowledge_router, prefix="/knowledge", tags=["Knowledge"])
 app.include_router(orchestration_router, prefix="/orchestration", tags=["Orchestration"])
 app.include_router(stripe_router, prefix="/app/stripe", tags=["stripe"])
+app.include_router(slang_router, prefix="/slang", tags=["Slang"])
 
 
 

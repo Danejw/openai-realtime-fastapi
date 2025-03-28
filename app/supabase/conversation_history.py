@@ -4,6 +4,7 @@ import os
 import json
 import logging
 from app.personal_agents.knowledge_extraction import KnowledgeExtractionService
+from app.personal_agents.slang_extraction import SlangExtractionService
 from app.psychology.mbti_analysis import MBTIAnalysisService
 from app.psychology.ocean_analysis import OceanAnalysisService
 from supabase import create_client, Client
@@ -102,10 +103,15 @@ async def replace_conversation_history_with_summary(user_id: str):
         mbti_task = asyncio.create_task(mbti_service.analyze_message(history_string))
         await mbti_task
 
-        # Run OCEAN analysi
+        # Run OCEAN analysis
         ocean_service = OceanAnalysisService(user_id)
         ocean_task = asyncio.create_task(ocean_service.analyze_message(history_string))
         await ocean_task
+        
+        # Run SLANG analysis
+        slang_service = SlangExtractionService(user_id)
+        slang_task = asyncio.create_task(slang_service.analyze_message(history_string))
+        await slang_task
     
         # Define instructions for the summarization agent.
         instructions = (

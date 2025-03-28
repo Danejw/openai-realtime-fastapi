@@ -63,14 +63,14 @@ class KnowledgeExtractionService:
             logging.error(f"Error extracting knowledge: {e}")
             return None
 
-    async def store_knowledge(self, knowledge: KnowledgeResult):
+    def store_knowledge(self, knowledge: KnowledgeResult):
         """
         Store extracted knowledge in the pgvector-powered Supabase table.
         """
-        await store_user_knowledge(self.user_id, knowledge.knowledge_text, knowledge.metadata.dict())
+        store_user_knowledge(self.user_id, knowledge.knowledge_text, knowledge.metadata.dict())
 
-    async def retrieve_similar_knowledge(self, query: str, top_k=5):
+    def retrieve_similar_knowledge(self, query: str, top_k=5):
         """
         Retrieve stored knowledge that is similar to the given query.
         """
-        return await find_similar_knowledge(self.user_id, query, top_k)
+        return find_similar_knowledge(self.user_id, query, top_k)

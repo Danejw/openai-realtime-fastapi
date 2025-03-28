@@ -1,8 +1,16 @@
+# This is a thread-safe container to store conversation history for a single user.
+# It also summarizes the conversation every 10 messages.
+# This stores the conversation history in local cache memory and is not persistent.
+
+# It is currently NOT being used.
+# See the Supabase/conversation_history.py for the persistent version currently in use.
+
 import asyncio
 from dataclasses import dataclass, field
 import logging
 from typing import List, Dict
 from agents import Agent, Runner
+
 
 @dataclass
 class ConversationContext:

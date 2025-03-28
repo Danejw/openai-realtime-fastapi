@@ -94,8 +94,8 @@
         <!-- Login container - full width -->
         <div class="container full-width">
             <h2>Login / Sign Up</h2>
-            <input type="email" id="email" placeholder="Email">
-            <input type="password" id="password" placeholder="Password">
+            <input type="email" style="width: 95%;" id="email" placeholder="Email">
+            <input type="password" style="width: 95%;" id="password" placeholder="Password">
             <button onclick="signUp()">Sign Up</button>
             <button onclick="login()">Login</button>
             <p class="message" id="statusMessage"></p>
@@ -125,7 +125,7 @@
         <!-- Orchestration container -->
         <div class="container">
             <h2>Orchestration</h2>
-            <input type="text" id="orchestrationMessage" placeholder="Enter your message">
+            <input type="text" style="width: 95%;" id="orchestrationMessage" placeholder="Enter your message">
             <button onclick="runOrchestration()">Start Orchestration</button>
             <p class="message" id="orchestrationResponse"></p>
         </div>
@@ -133,7 +133,7 @@
         <!-- Conversation Lead container -->
         <div class="container">
             <h2>Conversation Lead</h2>
-            <input type="text" id="convoMessage" placeholder="Enter your message">
+            <input type="text" style="width: 95%;" id="convoMessage" placeholder="Enter your message">
             <button onclick="startConversation()">Send Message</button>
             <p class="message" id="convoResponse"></p>
         </div>
@@ -141,9 +141,25 @@
         <!-- Knowledge Query container -->
         <div class="container">
             <h2>Knowledge Query</h2>
-            <input type="text" id="knowledgeQuery" placeholder="Enter your search query">
+            <input type="text" style="width: 95%;" id="knowledgeQuery" placeholder="Enter your search query">
             <button onclick="querySimilarKnowledge()">Search Similar Knowledge</button>
             <p class="message" id="knowledgeResponse"></p>
+        </div>
+
+        <!-- Slang Extraction Test Container -->
+        <div class="container">
+            <h2>Test Slang Extraction</h2>
+            <input type="text" style="width: 95%;" id="slangMessage" rows="4" placeholder="Enter a message with slang..."></textarea>
+            <button onclick="testSlangExtraction()">Extract Slang</button>
+            <p class="message" id="slangResponse"></p>
+        </div>
+
+        <!-- Slang Similarity Query Container -->
+        <div class="container">
+            <h2>Search Similar Slang</h2>
+            <input type="text" style="width: 95%;" id="slangQuery" placeholder="Enter a slang query...">
+            <button onclick="querySimilarSlang()">Search Similar Slang</button>
+            <p class="message" id="slangQueryResponse"></p>
         </div>
     </div>
 
@@ -391,6 +407,65 @@
                 document.getElementById("knowledgeResponse").innerText = "Error querying knowledge.";
             }
         }
+
+        // Function to test the Slang Extraction endpoint
+        async function testSlangExtraction() {
+            let token = await getAuthToken();
+            if (!token) return;
+
+            let message = document.getElementById("slangMessage").value;
+            if (!message) {
+                document.getElementById("slangResponse").innerText = "Please enter a message.";
+                return;
+            }
+
+            try {
+                let response = await fetch("http://localhost:8000/slang/extract-slang", {
+                    method: "POST",
+                    headers: {
+                        "Authorization": "Bearer " + token,
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ message: message })
+                });
+                let result = await response.json();
+                console.log("🔹 Slang Extraction Response:", result);
+                document.getElementById("slangResponse").innerText = JSON.stringify(result, null, 2);
+            } catch (err) {
+                console.error("❌ Error extracting slang:", err);
+                document.getElementById("slangResponse").innerText = "Error extracting slang.";
+            }
+        }
+
+        // Function to query similar slang from the vector store
+        async function querySimilarSlang() {
+            let token = await getAuthToken();
+            if (!token) return;
+
+            let query = document.getElementById("slangQuery").value;
+            if (!query) {
+                document.getElementById("slangQueryResponse").innerText = "Please enter a slang query.";
+                return;
+            }
+
+            try {
+                let response = await fetch("http://localhost:8000/slang/retrieve-slang", {
+                    method: "POST",
+                    headers: {
+                        "Authorization": "Bearer " + token,
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ message: query })
+                });
+                let result = await response.json();
+                console.log("🔹 Similar Slang Response:", result);
+                document.getElementById("slangQueryResponse").innerText = JSON.stringify(result, null, 2);
+            } catch (err) {
+                console.error("❌ Error querying similar slang:", err);
+                document.getElementById("slangQueryResponse").innerText = "Error querying similar slang.";
+            }
+        }
+
 
 </script>
 
